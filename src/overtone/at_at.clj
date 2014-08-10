@@ -70,7 +70,7 @@
 (defn- schedule-job
   "Schedule the fun to execute periodically in pool-info's pool with the
   specified initial-delay and ms-period. Returns a RecurringJob record."
-  [pool-info fun initial-delay ms-period desc interspaced?]
+  [pool-info fun initial-delay ms-period desc interspaced? & [j-id]]
   (let [initial-delay (long initial-delay)
         ms-period     (long ms-period)
         ^ScheduledThreadPoolExecutor t-pool (:thread-pool pool-info)
@@ -91,7 +91,7 @@
         jobs-ref      (:jobs-ref pool-info)
         id-count-ref  (:id-count-ref pool-info)
         job-info      (dosync
-                        (let [id       (commute id-count-ref inc)
+                        (let [id (or j-id (commute id-count-ref inc))
                               job-info (RecurringJob. id
                                                       start-time
                                                       ms-period
@@ -119,7 +119,7 @@
 (defn- schedule-at
   "Schedule the fun to execute once in the pool-info's pool after the
   specified initial-delay. Returns a ScheduledJob record."
-  [pool-info fun initial-delay desc]
+  [pool-info fun initial-delay desc & [j-id]]
   (let [initial-delay (long initial-delay)
         ^ScheduledThreadPoolExecutor t-pool (:thread-pool pool-info)
         jobs-ref      (:jobs-ref pool-info)
@@ -131,7 +131,7 @@
         start-time    (System/currentTimeMillis)
         id-count-ref  (:id-count-ref pool-info)
         job-info      (dosync
-                       (let [id       (commute id-count-ref inc)
+                       (let [id       (or j-id (commute id-count-ref inc))
                              job-info (ScheduledJob. id
                                                      start-time
                                                      initial-delay
@@ -193,13 +193,14 @@
   "Calls fun every ms-period, and takes an optional initial-delay for
   the first call in ms.  Returns a scheduled-fn which may be cancelled
   with cancel.
+   id - the unique id for that job.
 
   Default options are
   {:initial-delay 0 :desc \"\"}"
-  [ms-period fun pool & {:keys [initial-delay desc]
+  [ms-period fun pool & {:keys [initial-delay desc id]
                          :or {initial-delay 0
                               desc ""}}]
-  (schedule-job @(:pool-atom pool) fun initial-delay ms-period desc false))
+  (schedule-job @(:pool-atom pool) fun initial-delay ms-period desc false id))
 
 (defn interspaced
   "Calls fun repeatedly with an interspacing of ms-period, i.e. the next
@@ -207,13 +208,14 @@
    of the previous call. Also takes an optional initial-delay for the
    first call in ms. Returns a scheduled-fn which may be cancelled with
    cancel.
+   id - the unique id for that job.
 
    Default options are
    {:initial-delay 0 :desc \"\"}"
-  [ms-period fun pool & {:keys [initial-delay desc]
+  [ms-period fun pool & {:keys [initial-delay desc id]
                          :or {initial-delay 0
                               desc ""}}]
-  (schedule-job @(:pool-atom pool) fun initial-delay ms-period desc true))
+  (schedule-job @(:pool-atom pool) fun initial-delay ms-period desc true id))
 
 (defn now
   "Return the current time in ms"
@@ -228,12 +230,13 @@
   (at (+ 1000 (now))
       #(println \"hello from the past\")
       pool
-      :desc \"Message from the past\") ;=> prints 1s from now"
-  [ms-time fun pool & {:keys [desc]
+      :desc \"Message from the past\") ;=> prints 1s from now
+      :id unique-id-to-be-passed-in"
+  [ms-time fun pool & {:keys [desc id]
                        :or {desc ""}}]
   (let [initial-delay (- ms-time (now))
         pool-info  @(:pool-atom pool)]
-    (schedule-at pool-info fun initial-delay desc)))
+    (schedule-at pool-info fun initial-delay desc id)))
 
 (defn after
   "Schedules fun to be executed after delay-ms (in
