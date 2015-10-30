@@ -34,7 +34,7 @@ Simple ahead-of-time function scheduler. Allows you to schedule the execution of
 This fork was created to service pull requests left unmerged at https://github.com/overtone/at-at, you can pull it in to your leiningen project by adding:
 
 ```clj
-[silasdavis/at-at "1.2.0"]
+[silasdavis/at-at "1.2.1"]
 ```
 
 to your project.clj dependencies. See: https://clojars.org/silasdavis/at-at.
